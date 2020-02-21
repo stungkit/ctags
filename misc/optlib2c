@@ -64,27 +64,57 @@ my $options =
 	 die "Don't use --kinddef-<LANG>=+ option before defining the language"
 	     if (! defined $_[0]->{'langdef'});
 	 die "Adding a kind is allowed only to the language specified with --langdef: $1"
-	   unless ($_[0]->{'langdef'} eq $1);
+	     unless ($_[0]->{'langdef'} eq $1);
+
+	 my $letter = $2;
+	 my $name = $3;
+	 my $desc = $4;
 	 my $refonly = 0;
 	 $refonly = 1 if defined $5;
-	 push @{$_[0]->{'kinddefs'}}, { enabled => 1, letter => $2, name => $3, desc => $4,
+
+	 die "'F' as a kind letter is reserved for file kind."
+	     if ($letter eq 'F');
+	 die "unacceptable character is used for kind letter: $letter"
+	     unless ($letter =~ /^[a-zA-EG-Z]$/);
+
+	 die "'file' as a kind name is reserved"
+	     if ($name eq 'file');
+	 die "The initial letter of kind name must be alphabetic character: $name"
+	     unless (substr ($name, 0, 1) =~ /[a-zA-Z]/);
+	 die "Letters used in kind name other than initial letter must be alphanumeric characters: $name"
+	     unless (substr ($name, 1) =~ /^[a-zA-Z0-9]+$/);
+
+	 push @{$_[0]->{'kinddefs'}}, { enabled => 1, letter => $letter, name => $name, desc => $desc,
 					refonly => $refonly, roles => [], seps => [] };
        } ],
-     [ qr/^--_extradef-(.*)=([^,]+),(.+)/, sub {
+     [ qr/^--_extradef-(.*)=([^,]+),([^\{]+)/, sub {
 	 die "Don't use --_extradef-<LANG>=+ option before defining the language"
 	     if (! defined $_[0]->{'langdef'});
 	 die "Adding an extra is allowed only to the language specified with --langdef: $1"
 	     unless ($_[0]->{'langdef'} eq $1);
-	 push @{$_[0]->{'extradefs'}}, { name => $2, desc => $3 };
+
+	 my $name = $2;
+	 my $desc = $3;
+
+	 die "unacceptable character is used for extra name: $name"
+	     unless ($name =~ /^[a-zA-Z0-9]+$/);
+
+	 push @{$_[0]->{'extradefs'}}, { name => $name, desc => $desc };
        } ],
-     [ qr/^--_fielddef-(.*)=([^,]+),(.+)/, sub {
+     [ qr/^--_fielddef-(.*)=([^,]+),([^\{]+)/, sub {
 	 die "Don't use --_fielddef-<LANG>=+ option before defining the language"
 	     if (! defined $_[0]->{'langdef'});
 	 die "Adding a field is allowed only to the language specified with --langdef: $1"
 	     unless ($_[0]->{'langdef'} eq $1);
-	 push @{$_[0]->{'fielddefs'}}, { name => $2, desc => $3 };
+
+	 my $name = $2;
+	 my $desc = $3;
+	 die "unacceptable character is used for field name: $name"
+	     unless ($name =~ /^[a-zA-Z]+$/);
+
+	 push @{$_[0]->{'fielddefs'}}, { name => $name, desc => $desc };
        } ],
-     [ qr/^--_roledef-(.*)=([a-zA-Z])\.([a-zA-Z][a-zA-Z0-9]*),(.+)/, sub {
+     [ qr/^--_roledef-(.*)=([a-zA-Z])\.([a-zA-Z0-9]+),([^\{]+)/, sub {
 	   die "Don't use --_roledef-<LANG>=+ option before defining the language"
 	     if (! defined $_[0]->{'langdef'});
 	   die "Adding a field is allowed only to the language specified with --langdef: $1"
@@ -807,6 +837,7 @@ sub emit_fields_initialization {
     my $opts = shift;
     my $enabled = $opts->{"disabled"} ? "false": "true";
     my $method;
+    my $sep;
 
     $method  = "METHOD_NOT_CRAFTED";
     if (@{$opts->{"regexs"}} || $opts->{'tablenames'}) {
@@ -868,13 +899,17 @@ EOF
     }
 
     if ($opts->{'defaultScopeSeparator'}) {
+	$sep = "$opts->{'defaultScopeSeparator'}";
+	$sep = escape_dquotes "$sep" if ($sep eq '"');
 	print <<EOF;
-	def->defaultScopeSeparator = "$opts->{'defaultScopeSeparator'}";
+	def->defaultScopeSeparator = "$sep";
 EOF
     }
     if ($opts->{'defaultRootScopeSeparator'}) {
+	$sep = $opts->{'defaultRootScopeSeparator'};
+	$sep = escape_dquotes "$sep" if ($sep eq '"');
 	print <<EOF;
-	def->defaultRootScopeSeparator = "$opts->{'defaultRootScopeSeparator'}";
+	def->defaultRootScopeSeparator = "$sep";
 EOF
     }
     print <<EOF;

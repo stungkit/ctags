@@ -25,7 +25,9 @@ RST2PDF  = rst2pdf
 
 # rst2man had a bug about code-block:: handling.
 # https://sourceforge.net/p/docutils/patches/141
-RST2MAN_FLAGS = --syntax-highlight=none
+RST2MAN_FLAGS = $(shell if $(RST2MAN) --help | grep -q -e --syntax-highlight; then \
+				echo --syntax-highlight=none; \
+			fi)
 RST2HTML_FLAGS =
 RST2PDF_FLAGS =
 
@@ -56,7 +58,7 @@ rst_files  = $(gen_rst_files) $(SOURCE_FILES)
 man_pages  = $(basename $(rst_files))
 html_pages = $(addsuffix .html,$(man_pages))
 pdf_pages  = $(addsuffix .pdf,$(man_pages))
-doc_files = $(addprefix ../docs/man/,$(rst_files))
+doc_files  = $(addprefix ../docs/man/,$(rst_files))
 
 all: man html pdf
 
@@ -64,15 +66,31 @@ man: $(man_pages)
 html: $(html_pages)
 pdf: $(pdf_pages)
 
+#
+# Convert the names of man page files (without suffix) to man page citations.
+#
+# ctags.1 tags.5 ...
+# => ctags(1) tags(5) ...
+#
+cites := ${subst .,(,${addsuffix ),${man_pages}}}
+
+#
+# Convert the man page citations to sed patterns for making hyperlinks.
+#
+# ctags(1) tags(5) ...
+# => -e 's/\<ctags(1)/:ref:`& <&>`/g' -e 's/\<ctags(5)/:ref:`& <&>`/g' ...
+#
+is_gnu_sed := $(shell sed --version | grep -q GNU && echo 1)
+ifeq ($(is_gnu_sed),1)
+reppat := $(foreach m,$(cites),-e 's/\<$(m)/:ref:`& <&>`/g')
+else
+reppat := $(foreach m,$(cites),-e 's/[[:<:]]$(m)/:ref:`& <&>`/g')
+endif
+
 update-docs: $(doc_files)
 
 ../docs/man/%.rst: %.rst
-	sed \
-		-e 's/\<ctags(1)/:ref:`& <&>`/g' \
-		-e 's/\<ctags-incompatibilities(7)/:ref:`& <&>`/g' \
-		-e 's/\<ctags-optlib(7)/:ref:`& <&>`/g' \
-		-e 's/\<tags(5)/:ref:`& <&>`/g' \
-	< $< > $@
+	sed $(reppat) < $< > $@
 
 %.rst: %.rst.in
 ifeq ($(QUICK),)
@@ -89,7 +107,7 @@ endif
 %: %.rst
 	$(RST2MAN) $(RST2MAN_FLAGS) $< > $@
 %.html: %.rst
-	$(RST2HTML) $(RST2HTML_FLAGS)  $< > $@
+	$(RST2HTML) $(RST2HTML_FLAGS) $< > $@
 %.pdf: %.rst
 	$(RST2PDF) $(RST2PDF_FLAGS) $< -o $@
 

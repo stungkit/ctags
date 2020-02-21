@@ -57,6 +57,7 @@ PRETENSE_OPTS = ''
 RUN_SHRINK = False
 SHOW_DIFF_OUTPUT = False
 NUM_WORKER_THREADS = 4
+DIFF_U_NUM = 0
 
 #
 # Internal variables and constants
@@ -296,10 +297,10 @@ def basename_filter(internal, output_type):
 
 # convert a command line list to a command line string
 def join_cmdline(cmdline):
-    # surround with '' if an argument include spaces or '\'
+    # surround with '' if an argument includes spaces or '\'
     # TODO: use more robust way
-    return ' '.join(["'" + x + "'" if (' ' in x) or ('\\' in x) else x
-        for x in cmdline])
+    return ' '.join("'" + x + "'" if (' ' in x) or ('\\' in x) else x
+        for x in cmdline)
 
 def run_record_cmdline(cmdline, ffilter, ocmdline, output_type):
     with open(ocmdline, 'w') as f:
@@ -621,7 +622,8 @@ def run_tcase(finput, t, name, tclass, category, build_t, extra_inputs):
         ret.returncode = 0
     else:
         with open(odiff, 'wb') as f:
-            ret = subprocess.run(['diff', '-U', '0', '-I', '^!_TAG', '--strip-trailing-cr', fexpected, ofiltered],
+            ret = subprocess.run(['diff', '-U', str(DIFF_U_NUM),
+                '-I', '^!_TAG', '--strip-trailing-cr', fexpected, ofiltered],
                 stdout=f)
     #print('diff time: %f' % (time.time() - start))
 
@@ -960,10 +962,18 @@ def tmain_compare(subdir, build_subdir, aspect, file):
     if os.path.isfile(actual) and os.path.isfile(expected) and \
             filecmp.cmp(actual, expected):
         run_result('ok', msg, None, file=file)
+        # When successful, remove files generated in the last
+        # failure to make the directory clean.
+        # Unlike other generated files like gdb-backtrace.txt
+        # misc/review script looks at the -diff.txt file.
+        # Therefore we handle -diff.txt specially here.
+        if os.path.isfile(generated):
+            os.remove(generated)
         return True
     else:
         with open(generated, 'wb') as f:
-            subprocess.run(['diff', '-U', '0', '--strip-trailing-cr',
+            subprocess.run(['diff', '-U',
+                str(DIFF_U_NUM), '--strip-trailing-cr',
                 actual, expected],
                 stdout=f, stderr=subprocess.STDOUT)
         run_result('error', msg, None, 'diff: ' + generated, file=file)
