@@ -3,6 +3,8 @@
 
 . ../utils.sh
 
+CTAGS="$1"
+
 if ${CTAGS} --quiet --options=NONE --list-features | grep -q afasdfasfasfsa; then
     echo
 else
