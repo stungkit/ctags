@@ -686,7 +686,7 @@ extern void initialize (const langType language)
 
 extern parserDefinition* PrologParser (void)
 {
-	static const char *const extensions [] = {"pl", NULL};
+	static const char *const extensions [] = {"pl", "pro", NULL};
 
 	/* Interpreters supporting shebang:
 	 *
