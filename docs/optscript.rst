@@ -275,6 +275,7 @@ Here ``--_sequel-<LANG>`` option comes in. ctas runs the code fragment
 specified with the option after reaching the end of input.
 
 .. code-block:: ctags
+
 	--langdef=PseudoLang
 	--map-PseudoLang=.ppp
 	--kinddef-PseudoLang=d,def,definitions
