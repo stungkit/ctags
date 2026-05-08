@@ -2693,6 +2693,10 @@ static bool parsePrototype (tokenInfo *const name, tokenInfo *const token, state
 	 *         maybe parse nested functions
 	 *     }
 	 *
+	 * CASE 1a - ignore
+	 * BindAgent.prototype.build.call(this)
+	 *
+	 *
 	 * CASE 2
 	 * Prototype listing
 	 *     ValidClassOne.prototype = {
@@ -2737,17 +2741,26 @@ static bool parsePrototype (tokenInfo *const name, tokenInfo *const token, state
 
 		if (! isType(token, TOKEN_KEYWORD))
 		{
-			vString *const signature = vStringNew ();
-
 			token->scope = state->indexForName;
-
-			tokenInfo *identifier_token = newToken ();
-			ptrArray *prototype_tokens = NULL;
-			accept_period_in_identifier(true);
 
 			tokenInfo *const method_body_token = newToken ();
 			copyToken (method_body_token, token, true);
 			readToken (method_body_token);
+
+			/*
+			 * Ignore if CASE 1a
+			 */
+			if (isType (method_body_token, TOKEN_PERIOD))
+			{
+				deleteToken (method_body_token);
+				goto not_found;
+			}
+
+			vString *const signature = vStringNew ();
+
+			tokenInfo *identifier_token = newToken ();
+			ptrArray *prototype_tokens = NULL;
+			accept_period_in_identifier(true);
 
 			while (! isType (method_body_token, TOKEN_SEMICOLON) &&
 				   ! isType (method_body_token, TOKEN_CLOSE_CURLY) &&
@@ -2840,6 +2853,7 @@ static bool parsePrototype (tokenInfo *const name, tokenInfo *const token, state
 		}
 	}
 
+ not_found:
 	TRACE_LEAVE_TEXT("done: not found");
 	return true;
 }
